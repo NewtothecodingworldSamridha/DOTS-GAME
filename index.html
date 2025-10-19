@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dots Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            overflow-x: hidden;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            max-height: 95vh;
+            overflow-y: auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: clamp(1.5em, 5vw, 2.5em);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .mode-selection {
+            text-align: center;
+            padding: 15px;
+        }
+
+        .mode-selection h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: clamp(1.2em, 4vw, 1.8em);
+        }
+
+        .mode-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .mode-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 18px 35px;
+            font-size: clamp(1em, 3vw, 1.2em);
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            width: 100%;
+            max-width: 300px;
+            touch-action: manipulation;
+        }
+
+        .mode-btn:active {
+            transform: scale(0.95);
+        }
+
+        .mode-btn.secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .game-container {
+            display: none;
+        }
+
+        .info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            color: white;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .info div {
+            font-size: clamp(0.9em, 3vw, 1.2em);
+            font-weight: bold;
+        }
+
+        .score {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .player-indicator {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: inline-block;
+            border: 2px solid white;
+            flex-shrink: 0;
+        }
+
+        #game-board {
+            display: grid;
+            gap: 0;
+            margin: 0 auto;
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.1);
+            pointer-events: auto;
+            touch-action: none;
+            max-width: 100%;
+            overflow: visible;
+        }
+
+        #game-board.disabled {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .cell {
+            background: white;
+            border: 2px solid #ddd;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1;
+        }
+
+        .cell.captured {
+            cursor: default;
+            border-color: transparent;
+        }
+
+        .cell.player1 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .cell.player2 {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            background: #333;
+            border-radius: 50%;
+            position: absolute;
+            z-index: 15;
+            pointer-events: none;
+        }
+
+        .dot.top-left { top: -5px; left: -5px; }
+        .dot.top-right { top: -5px; right: -5px; }
+        .dot.bottom-left { bottom: -5px; left: -5px; }
+        .dot.bottom-right { bottom: -5px; right: -5px; }
+
+        .edge {
+            position: absolute;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            z-index: 5;
+            touch-action: manipulation;
+        }
+
+        .edge.horizontal {
+            height: 24px;
+            width: calc(100% - 12px);
+            left: 6px;
+            padding: 10px 0;
+        }
+
+        .edge.vertical {
+            width: 24px;
+            height: calc(100% - 12px);
+            top: 6px;
+            padding: 0 10px;
+        }
+
+        .edge.top { top: -12px; }
+        .edge.bottom { bottom: -12px; }
+        .edge.left { left: -12px; }
+        .edge.right { right: -12px; }
+
+        .edge::after {
+            content: '';
+            position: absolute;
+            background: #bbb;
+            transition: all 0.2s ease;
+        }
+
+        .edge.horizontal::after {
+            height: 3px;
+            width: 100%;
+            top: 50%;
+            left: 0;
+            transform: translateY(-50%);
+        }
+
+        .edge.vertical::after {
+            width: 3px;
+            height: 100%;
+            left: 50%;
+            top: 0;
+            transform: translateX(-50%);
+        }
+
+        .edge.selected::after {
+            background: #667eea;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
+        }
+
+        .edge.selected {
+            cursor: default;
+            z-index: 10;
+        }
+
+        .controls {
+            margin-top: 15px;
+            text-align: center;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: clamp(0.9em, 3vw, 1.1em);
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            touch-action: manipulation;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        button.secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        #game-over {
+            display: none;
+            text-align: center;
+            margin-top: 15px;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            color: white;
+        }
+
+        #game-over h2 {
+            font-size: clamp(1.3em, 4vw, 2em);
+            margin-bottom: 10px;
+        }
+
+        #current-player {
+            text-align: center;
+            font-size: clamp(1em, 3.5vw, 1.3em);
+            margin-bottom: 12px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .turn-selection {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .turn-btn {
+            background: white;
+            color: #667eea;
+            border: 3px solid #667eea;
+            padding: 15px 30px;
+            font-size: clamp(1em, 3vw, 1.1em);
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .turn-btn:active {
+            background: #667eea;
+            color: white;
+            transform: scale(0.95);
+        }
+
+        .difficulty-selection {
+            text-align: center;
+            margin: 15px 0;
+        }
+
+        .difficulty-selection h3 {
+            color: #667eea;
+            margin-bottom: 12px;
+            font-size: clamp(1em, 3.5vw, 1.2em);
+        }
+
+        .difficulty-buttons {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .difficulty-btn {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+            padding: 10px 20px;
+            font-size: clamp(0.85em, 2.5vw, 1em);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .difficulty-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .thinking-indicator {
+            text-align: center;
+            color: #f5576c;
+            font-weight: bold;
+            font-size: clamp(0.9em, 3vw, 1.1em);
+            margin-top: 10px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Dots Game</h1>
+        
+        <div class="mode-selection" id="mode-selection">
+            <h2>Select Game Mode</h2>
+            <div class="mode-buttons">
+                <button class="mode-btn" id="pvp-btn">👥 Player vs Player</button>
+                <button class="mode-btn secondary" id="pvc-btn">🤖 Player vs Computer</button>
+            </div>
+        </div>
+
+        <div class="game-container" id="game-container">
+            <div id="turn-selection-screen" style="display: none;">
+                <h2 style="text-align: center; color: #667eea; margin-bottom: 15px;">Who goes first?</h2>
+                
+                <div class="difficulty-selection">
+                    <h3>Select Difficulty</h3>
+                    <div class="difficulty-buttons">
+                        <button class="difficulty-btn active" data-difficulty="easy">Easy</button>
+                        <button class="difficulty-btn" data-difficulty="medium">Medium</button>
+                        <button class="difficulty-btn" data-difficulty="hard">Hard</button>
+                    </div>
+                </div>
+
+                <div class="turn-selection">
+                    <button class="turn-btn" data-turn="1">🎮 You Start</button>
+                    <button class="turn-btn" data-turn="2">🤖 Computer Starts</button>
+                </div>
+            </div>
+
+            <div id="game-screen" style="display: none;">
+                <div class="info">
+                    <div class="score">
+                        <span class="player-indicator" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></span>
+                        <span id="player1-label">Player 1</span>: <span id="score1">0</span>
+                    </div>
+                    <div class="score">
+                        <span class="player-indicator" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);"></span>
+                        <span id="player2-label">Player 2</span>: <span id="score2">0</span>
+                    </div>
+                </div>
+
+                <div id="current-player">Current Turn: Player 1</div>
+                <div id="thinking-indicator" class="thinking-indicator" style="display: none;">🤖 Computer is thinking...</div>
+                <div id="game-board"></div>
+
+                <div id="game-over">
+                    <h2>🎉 Game Over!</h2>
+                    <p id="winner"></p>
+                </div>
+
+                <div class="controls">
+                    <button id="new-game-btn">New Game</button>
+                    <button class="secondary" id="main-menu-btn">Main Menu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const GRID_SIZE = 5;
+        let currentPlayer = 1;
+        let scores = { 1: 0, 2: 0 };
+        let edges = {};
+        let boxes = {};
+        let gameMode = null;
+        let isComputerThinking = false;
+        let difficulty = 'easy';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('pvp-btn').addEventListener('click', () => selectMode('pvp'));
+            document.getElementById('pvc-btn').addEventListener('click', () => selectMode('pvc'));
+            document.getElementById('new-game-btn').addEventListener('click', resetGame);
+            document.getElementById('main-menu-btn').addEventListener('click', backToMenu);
+            
+            document.querySelectorAll('.difficulty-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    difficulty = this.dataset.difficulty;
+                    document.querySelectorAll('.difficulty-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+            
+            document.querySelectorAll('.turn-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    startGameWithTurn(parseInt(this.dataset.turn));
+                });
+            });
+        });
+
+        function selectMode(mode) {
+            gameMode = mode;
+            document.getElementById('mode-selection').style.display = 'none';
+            document.getElementById('game-container').style.display = 'block';
+            
+            if (mode === 'pvc') {
+                document.getElementById('player2-label').textContent = 'Computer';
+                document.getElementById('turn-selection-screen').style.display = 'block';
+            } else {
+                document.getElementById('player1-label').textContent = 'Player 1';
+                document.getElementById('player2-label').textContent = 'Player 2';
+                document.getElementById('turn-selection-screen').style.display = 'none';
+                document.getElementById('game-screen').style.display = 'block';
+                initGame();
+            }
+        }
+
+        function startGameWithTurn(firstPlayer) {
+            document.getElementById('turn-selection-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'block';
+            currentPlayer = firstPlayer;
+            initGame();
+            
+            if (currentPlayer === 2 && gameMode === 'pvc') {
+                setTimeout(makeComputerMove, 800);
+            }
+        }
+
+        function initGame() {
+            const board = document.getElementById('game-board');
+            board.innerHTML = '';
+            board.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 60px)`;
+            board.style.gridTemplateRows = `repeat(${GRID_SIZE}, 60px)`;
+            
+            scores = { 1: 0, 2: 0 };
+            edges = {};
+            boxes = {};
+            isComputerThinking = false;
+            
+            updateScores();
+            updateCurrentPlayer();
+            document.getElementById('game-over').style.display = 'none';
+            document.getElementById('thinking-indicator').style.display = 'none';
+
+            for (let row = 0; row < GRID_SIZE; row++) {
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    
+                    cell.innerHTML = `
+                        <div class="dot top-left"></div>
+                        <div class="dot top-right"></div>
+                        <div class="dot bottom-left"></div>
+                        <div class="dot bottom-right"></div>
+                        <div class="edge horizontal top" data-edge="top"></div>
+                        <div class="edge horizontal bottom" data-edge="bottom"></div>
+                        <div class="edge vertical left" data-edge="left"></div>
+                        <div class="edge vertical right" data-edge="right"></div>
+                    `;
+                    
+                    const edgeElements = cell.querySelectorAll('.edge');
+                    edgeElements.forEach(edge => {
+                        edge.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            if (!isComputerThinking && (gameMode === 'pvp' || currentPlayer === 1)) {
+                                handleEdgeClick(row, col, edge.dataset.edge);
+                            }
+                        });
+                    });
+                    
+                    board.appendChild(cell);
+                }
+            }
+        }
+
+        function getEdgeKey(row, col, side) {
+            if (side === 'top') return `${row}-${col}-top`;
+            if (side === 'bottom') return `${row + 1}-${col}-top`;
+            if (side === 'left') return `${row}-${col}-left`;
+            if (side === 'right') return `${row}-${col + 1}-left`;
+        }
+
+        function handleEdgeClick(row, col, side) {
+            const edgeKey = getEdgeKey(row, col, side);
+            if (edges[edgeKey]) return;
+            
+            edges[edgeKey] = currentPlayer;
+            markEdgeAsSelected(row, col, side);
+            
+            let boxCompleted = checkAndCompleteBoxes(row, col);
+            updateScores();
+            
+            if (!boxCompleted) {
+                currentPlayer = currentPlayer === 1 ? 2 : 1;
+                updateCurrentPlayer();
+                
+                if (gameMode === 'pvc' && currentPlayer === 2) {
+                    setTimeout(makeComputerMove, 600);
+                }
+            } else if (gameMode === 'pvc' && currentPlayer === 2) {
+                setTimeout(makeComputerMove, 600);
+            }
+            
+            if (Object.keys(boxes).length === GRID_SIZE * GRID_SIZE) {
+                endGame();
+            }
+        }
+
+        function markEdgeAsSelected(row, col, side) {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                const r = parseInt(cell.dataset.row);
+                const c = parseInt(cell.dataset.col);
+                
+                if ((side === 'top' && r === row && c === col) ||
+                    (side === 'bottom' && r === row && c === col) ||
+                    (side === 'left' && r === row && c === col) ||
+                    (side === 'right' && r === row && c === col)) {
+                    cell.querySelector(`.edge[data-edge="${side}"]`).classList.add('selected');
+                }
+                
+                if (side === 'bottom' && r === row + 1 && c === col) {
+                    cell.querySelector('.edge[data-edge="top"]').classList.add('selected');
+                }
+                if (side === 'right' && r === row && c === col + 1) {
+                    cell.querySelector('.edge[data-edge="left"]').classList.add('selected');
+                }
+            });
+        }
+
+        function checkAndCompleteBoxes(row, col) {
+            let boxCompleted = false;
+            const boxesToCheck = [
+                { row, col },
+                { row: row - 1, col },
+                { row, col: col - 1 },
+                { row: row + 1, col },
+                { row, col: col + 1 }
+            ];
+            
+            boxesToCheck.forEach(box => {
+                if (box.row >= 0 && box.row < GRID_SIZE && box.col >= 0 && box.col < GRID_SIZE) {
+                    if (isBoxComplete(box.row, box.col) && !boxes[`${box.row}-${box.col}`]) {
+                        boxes[`${box.row}-${box.col}`] = currentPlayer;
+                        scores[currentPlayer]++;
+                        boxCompleted = true;
+                        
+                        const cell = document.querySelector(`.cell[data-row="${box.row}"][data-col="${box.col}"]`);
+                        cell.classList.add('captured', `player${currentPlayer}`);
+                    }
+                }
+            });
+            
+            return boxCompleted;
+        }
+
+        function isBoxComplete(row, col) {
+            const top = getEdgeKey(row, col, 'top');
+            const bottom = getEdgeKey(row, col, 'bottom');
+            const left = getEdgeKey(row, col, 'left');
+            const right = getEdgeKey(row, col, 'right');
+            
+            return edges[top] && edges[bottom] && edges[left] && edges[right];
+        }
+
+        function makeComputerMove() {
+            if (isComputerThinking) return;
+            isComputerThinking = true;
+            document.getElementById('game-board').classList.add('disabled');
+            document.getElementById('thinking-indicator').style.display = 'block';
+            
+            const availableEdges = getAvailableEdges();
+            if (availableEdges.length === 0) return;
+            
+            let moveToMake = availableEdges[Math.floor(Math.random() * availableEdges.length)];
+            
+            setTimeout(() => {
+                handleEdgeClick(moveToMake.row, moveToMake.col, moveToMake.side);
+                isComputerThinking = false;
+                document.getElementById('game-board').classList.remove('disabled');
+                document.getElementById('thinking-indicator').style.display = 'none';
+            }, 600);
+        }
+
+        function getAvailableEdges() {
+            const available = [];
+            for (let row = 0; row < GRID_SIZE; row++) {
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    ['top', 'left'].forEach(side => {
+                        const edgeKey = getEdgeKey(row, col, side);
+                        if (!edges[edgeKey]) {
+                            available.push({ row, col, side });
+                        }
+                    });
+                }
+            }
+            for (let col = 0; col < GRID_SIZE; col++) {
+                const edgeKey = getEdgeKey(GRID_SIZE, col, 'top');
+                if (!edges[edgeKey]) {
+                    available.push({ row: GRID_SIZE - 1, col, side: 'bottom' });
+                }
+            }
+            for (let row = 0; row < GRID_SIZE; row++) {
+                const edgeKey = getEdgeKey(row, GRID_SIZE, 'left');
+                if (!edges[edgeKey]) {
+                    available.push({ row, col: GRID_SIZE - 1, side: 'right' });
+                }
+            }
+            return available;
+        }
+
+        function updateScores() {
+            document.getElementById('score1').textContent = scores[1];
+            document.getElementById('score2').textContent = scores[2];
+        }
+
+        function updateCurrentPlayer() {
+            const playerLabel = gameMode === 'pvc' && currentPlayer === 2 ? 'Computer' : `Player ${currentPlayer}`;
+            document.getElementById('current-player').textContent = `Current Turn: ${playerLabel}`;
+        }
+
+        function endGame() {
+            const winnerText = scores[1] > scores[2] 
+                ? (gameMode === 'pvc' ? '🎉 You Win!' : '🎉 Player 1 Wins!')
+                : scores[2] > scores[1]
+                ? (gameMode === 'pvc' ? '🤖 Computer Wins!' : '🎉 Player 2 Wins!')
+                : '🤝 It\'s a Tie!';
+            
+            document.getElementById('winner').textContent = winnerText;
+            document.getElementById('game-over').style.display = 'block';
+        }
+
+        function resetGame() {
+            initGame();
+        }
+
+        function backToMenu() {
+            document.getElementById('game-container').style.display = 'none';
+            document.getElementById('mode-selection').style.display = 'block';
+            gameMode = null;
+        }
+    </script>
+</body>
+</html>
